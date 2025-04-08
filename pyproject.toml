@@ -1,0 +1,41 @@
+[project]
+name = "red-agent"
+version = "0.1.0"
+description = "\"Emergent debate system with LLM agents using LangGraph\""
+authors = [
+    {name = "alberto"}
+]
+readme = "README.md"
+requires-python = ">=3.10,<4.0"
+dependencies = [
+    "langchain>=0.3.23",
+    "langgraph>=0.3.25",
+    "openai>=1.71.0",
+    "tiktoken>=0.9.0",
+    "pydantic>=2.11.2",
+    "pytest (>=8.3.5,<9.0.0)"
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+ruff = "^0.11.4"
+pytest = "^8.3.5"
+flake8 = "^7.2.0"
+darker = "^2.1.1"
+pre-commit = "^4.2.0"
+
+[tool.black]
+line-length = 79
+target-version = ['py310']
+
+[tool.flake8]
+max-line-length = 79
+
+[tool.ruff]
+line-length = 79
+select = ["E501", "F401", "F403", "F405", "F541", "F811", "F823", "F841", "W292", "W293", "W504", "W605"]
+ignore = ["E203", "E266", "E501", "W503"]
