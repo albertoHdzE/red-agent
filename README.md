@@ -12,21 +12,21 @@ This project is both a **scientific alignment experiment** and a **deep learning
 
 This project is structured into the following major milestones:
 
-1. ✅ Project Initialization  
-2. ✅ LLM Backend Setup  
-3. ✅ LangGraph Agent Scaffold  
-4. 🧠 Define Agent Personalities  
-5. ⚙️ Implement Debate Arena  
-6. 🎯 Add Red-Team Agents  
-7. 🧠 Memory and Belief Tracking  
-8. 📈 Metric and Drift Measurement  
-9. 📉 Visualization Tools  
-10. 🔁 Multi-Round Experimentation  
-11. 🧾 Documentation and Guide  
-12. 📘 Research Paper Generation  
-13. 🌐 Optional Streamlit Interface  
-14. 🐳 Optional Docker Packaging  
-15. ✅ Final Cleanup  
+1. ✅ Project Initialization
+2. ✅ LLM Backend Setup
+3. ✅ LangGraph Agent Scaffold
+4. 🧠 Define Agent Personalities
+5. ⚙️ Implement Debate Arena
+6. 🎯 Add Red-Team Agents
+7. 🧠 Memory and Belief Tracking
+8. 📈 Metric and Drift Measurement
+9. 📉 Visualization Tools
+10. 🔁 Multi-Round Experimentation
+11. 🧾 Documentation and Guide
+12. 📘 Research Paper Generation
+13. 🌐 Optional Streamlit Interface
+14. 🐳 Optional Docker Packaging
+15. ✅ Final Cleanup
 16. 🌟 Publication & Showcase
 
 ---
