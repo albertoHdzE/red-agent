@@ -20,3 +20,4 @@ clean:
 	rm -rf logs/round_*
 	rm -f logs/transcript.txt
 	rm -f logs/complete_evaluation.csv
+	rm -f logs/*.txt
