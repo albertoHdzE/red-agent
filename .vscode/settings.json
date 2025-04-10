@@ -1,0 +1,24 @@
+{
+    "python.formatting.provider": "black",
+    "python.formatting.blackArgs": ["--line-length", "79"],
+    "editor.formatOnSave": true,
+
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": true
+    },
+
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.mypyEnabled": true,
+
+    "python.linting.mypyArgs": [
+      "--ignore-missing-imports"
+    ],
+
+    "python.analysis.diagnosticSeverityOverrides": {
+      "reportMissingImports": "none"
+    },
+
+    "python.linting.pylintEnabled": false,
+    "editor.defaultFormatter": "ms-python.python"
+  }

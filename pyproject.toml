@@ -32,6 +32,8 @@ pytest = "^8.3.5"
 flake8 = "^7.2.0"
 darker = "^2.1.1"
 pre-commit = "^4.2.0"
+isort = "^6.0.1"
+mypy = "^1.15.0"
 
 [tool.black]
 line-length = 79
@@ -39,8 +41,28 @@ target-version = ['py310']
 
 [tool.flake8]
 max-line-length = 79
+ignore = [
+  "E203",  # Whitespace before ':' (Black disagrees with Flake8)
+  "W503",  # Line break before binary operator (Black prefers this)
+]
+exclude = [".venv", "build", "dist", "__pycache__"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_third_party = ["jinja2", "langchain", "langchain_ollama"]
+skip_gitignore = true
+
+[tool.mypy]
+ignore_missing_imports = true
+follow_imports = "skip"
+plugins = []
+exclude = ["tests", "build", "docs"]
 
 [tool.ruff]
 line-length = 79
-select = ["E501", "F401", "F403", "F405", "F541", "F811", "F823", "F841", "W292", "W293", "W504", "W605"]
-ignore = ["E203", "E266", "E501", "W503"]
+select = ["E501", "F401", "F403", "F405", "F541", "F811", "F823", "F841", "W292", "W293", "W505", "W605"]
+ignore = ["E203", "E266", "E501"]
+
+[tool.poetry.scripts]
+format = "black . --line-length=88"

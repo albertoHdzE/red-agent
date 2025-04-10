@@ -3,7 +3,7 @@ from pathlib import Path
 
 class RefereeAgent:
     def __init__(self, model: str = "mistral"):
-        self.evaluations = []
+        self.evaluations: list[dict] = []
         self.model = model  # You can hook it into LLM-based judgment later
 
     def evaluate(self, comments: list[dict], round_number: int) -> None:

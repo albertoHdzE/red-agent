@@ -1,3 +1,4 @@
+# fmt: off
 topics = [
     "What is the most effective solution to stop the exploitation of Earth's natural resources and non-human animals, ensuring ecological balance and the survival of all non-human life forms, even if it requires radical changes to human civilization?",
     "Should nations prioritize universal basic income as a fundamental human right, even if it risks destabilizing traditional economic systems and incentivizing dependency?",
@@ -10,3 +11,4 @@ topics = [
     "Is it ethical to restrict freedom of speech in order to combat misinformation and hate speech, even if it risks empowering authoritarian controls over public discourse?",
     "What should be the ethical approach to balancing technological advancements with the risks of surveillance and privacy erosion in an increasingly connected world?",
 ]
+# fmt: on

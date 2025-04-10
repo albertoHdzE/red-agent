@@ -13,7 +13,7 @@ LOGS_DIR = Path(__file__).parent.parent.parent / "logs"
 def parse_transcript(transcript: str) -> list[dict]:
     """Extract individual comment dictionaries from raw transcript text."""
     comments = []
-    comment_id_map = {}  # Track number of comments per character
+    comment_id_map: dict[str, int] = {}  # Track number of comments per character
 
     for line in transcript.strip().split("\n"):
         match = re.match(r"(\w+): (.+)", line.strip())

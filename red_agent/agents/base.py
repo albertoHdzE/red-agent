@@ -1,14 +1,14 @@
 from pathlib import Path
 
 from jinja2 import Template
-from langchain_ollama import ChatOllama
+from langchain_ollama import ChatOllama  # type: ignore
 
 
 class DebateAgent:
     def __init__(self, name: str, role: str, model: str = "mistral"):
         self.name = name
         self.role = role
-        self.memory = []
+        self.memory: list[str] = []
         self.finished = False
         self.model_name = model
         self.turn_count = 0
