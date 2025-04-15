@@ -1,24 +1,34 @@
 {
-    "python.formatting.provider": "black",
-    "python.formatting.blackArgs": ["--line-length", "79"],
-    "editor.formatOnSave": true,
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": ["--line-length", "79"],
+  "editor.formatOnSave": true,
 
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
-    },
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  },
 
-    "python.linting.enabled": true,
-    "python.linting.flake8Enabled": true,
-    "python.linting.mypyEnabled": true,
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.linting.mypyEnabled": true,
 
-    "python.linting.mypyArgs": [
-      "--ignore-missing-imports"
-    ],
+  "python.linting.mypyArgs": ["--ignore-missing-imports"],
 
-    "python.analysis.diagnosticSeverityOverrides": {
-      "reportMissingImports": "none"
-    },
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportMissingImports": "none"
+  },
 
-    "python.linting.pylintEnabled": false,
-    "editor.defaultFormatter": "ms-python.python"
+  "python.linting.pylintEnabled": false,
+  "editor.defaultFormatter": "ms-python.python",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
   }
+}

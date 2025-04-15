@@ -18,7 +18,9 @@ dependencies = [
     "langchain-community (>=0.3.21,<0.4.0)",
     "jinja2 (>=3.1.6,<4.0.0)",
     "langchain-ollama (>=0.3.1,<0.4.0)",
-    "isort (>=6.0.1,<7.0.0)"
+    "isort (>=6.0.1,<7.0.0)",
+    "types-pyyaml (>=6.0.12.20250402,<7.0.0.0)",
+    "psutil (>=7.0.0,<8.0.0)"
 ]
 
 [build-system]
@@ -34,6 +36,7 @@ darker = "^2.1.1"
 pre-commit = "^4.2.0"
 isort = "^6.0.1"
 mypy = "^1.15.0"
+types-PyYAML = "^6.0.12"  # Add this line
 
 [tool.black]
 line-length = 79
@@ -65,4 +68,5 @@ select = ["E501", "F401", "F403", "F405", "F541", "F811", "F823", "F841", "W292"
 ignore = ["E203", "E266", "E501"]
 
 [tool.poetry.scripts]
-format = "black . --line-length=88"
+# Define scripts that call Python functions
+format = "scripts.format:main"
