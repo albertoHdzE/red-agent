@@ -35,7 +35,9 @@ def create_query(
     query = prompt_template.replace(
         "[number of comments]", str(len(selected_comments))
     )
-    query = query.replace("[here is the comments to evaluate]", comments_text)
+    query = query.replace(
+        "[here is the comment(s) to evaluate]", comments_text
+    )
 
     return query
 

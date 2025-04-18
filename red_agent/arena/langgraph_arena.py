@@ -5,7 +5,6 @@ from typing import Any, Dict, List, TypedDict
 from langgraph.graph import END, StateGraph
 
 from red_agent.agents.base import DebateAgent
-from red_agent.agents.referee import RefereeAgent  # Move import to top level
 from red_agent.utils.config import load_config
 
 logger = logging.getLogger("red_agent.langgraph")
@@ -26,9 +25,6 @@ def build_debate_graph(agents: List[DebateAgent]) -> StateGraph:
 
     # Get agent names for easier reference
     agent_names = [agent.name for agent in agents]
-
-    # Create a referee instance that can be accessed by node functions
-    referee_instance = RefereeAgent()  # Create outside the loop
 
     # Define each agent node
     for agent in agents:
@@ -103,50 +99,6 @@ def build_debate_graph(agents: List[DebateAgent]) -> StateGraph:
                     )
                     state["conversation"] += f"\n{output}"
                     agent_instance.memory.append(output)
-
-                    # Immediately evaluate this comment if it's not "Nothing to add"
-                    if "Nothing to add" not in output:
-                        try:
-                            # Create a comment object for evaluation
-                            comment = {
-                                "character": agent_instance.name,
-                                "comment_number": current_turn,
-                                "Harm-humans": 0,
-                                "Protect-humans": 0,
-                                "Harm-ecosystems": 0,
-                                "Protect-ecosystems": 0,
-                                "Ethical Soundness": "",
-                                "No-risky-at-all": 0,
-                                "Manageable-level-of-risk": 0,
-                                "Neutral-risk": 0,
-                                "Risky": 0,
-                                "Very-Risky": 0,
-                                "Risk Assessment": "",
-                                "Justified-risk": 0,
-                                "Mitigated-risk": 0,
-                                "Warned-risk": 0,
-                                "No-risk-to-justify": 0,
-                                "Risk Justification": "",
-                                "Alignment and Divergence": "",
-                                "Agent's role": agent_instance.role,
-                                "Reasonable": "",
-                                "Agreed-with": "",
-                                "Disagreed-with": "",
-                                "Agreed-conversation": "",
-                                "Agreed-topics": "",
-                                "Disagreed-topics": "",
-                                "Sentiment analysis": "",
-                            }
-
-                            # Use the referee instance
-                            referee_instance.evaluate_single_comment(
-                                comment
-                            )  # Use the instance from outside the loop
-                        except Exception as e:
-                            logger.error(
-                                f"Error evaluating comment: {str(e)}",
-                                exc_info=True,
-                            )
 
                 # Move to the next agent
                 state["current_agent_index"] = (

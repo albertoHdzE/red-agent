@@ -76,14 +76,14 @@ class DebateAgent:
             f"Generating comment for {self.name}, turn {self.turn_count+1}"
         )
 
-        # Force agent to finish after max_turns
+        # Check if max_turns is reached. If so, forces the end
         if self.turn_count >= self.max_turns:
             logger.info(
                 f"Agent {self.name} reached max turns ({self.max_turns}), marking as finished"
             )
             self.finished = True
             response = f"{self.name}: Nothing to add (reached maximum turns)"
-            self._log_transcript(response)
+            self._log_first50_characters(response)
             return response
 
         if self.finished:
@@ -91,10 +91,10 @@ class DebateAgent:
                 f"Agent {self.name} is finished, returning 'Nothing to add'"
             )
             response = f"{self.name}: Nothing to add"
-            self._log_transcript(response)
+            self._log_first50_characters(response)
             return response
 
-        # Ensure the agent has access to the full conversation
+        # conversation is the updated conversation with the last comment
         full_conversation = conversation
 
         # Log the conversation length for debugging
@@ -102,6 +102,7 @@ class DebateAgent:
             f"Conversation length for {self.name}: {len(full_conversation)} characters"
         )
 
+        # the prompt should contain the entire conversation up to this poin
         prompt = self.build_prompt(topic, full_conversation)
 
         try:
@@ -141,7 +142,7 @@ class DebateAgent:
                 )
                 response = " ".join(words[:100]) + "..."
 
-            print(f"\n🧪 {self.name} raw output:\n{response}\n")
+            print(f"\n {self.name} raw output:\n{response}\n")
         except Exception as e:
             logger.error(
                 f"Error generating response for {self.name}: {str(e)}",
@@ -149,7 +150,7 @@ class DebateAgent:
             )
             response = f"{self.name}: Nothing to add  # LLM error: {str(e)}"
             self.finished = True
-            self._log_transcript(response)
+            self._log_first50_characters(response)
             return response
 
         # Logic for early stopping - force more engagement
@@ -181,10 +182,10 @@ class DebateAgent:
 
         # At the end of the method, ensure we log the response
         self.memory.append(response)
-        self._log_transcript(response)
+        self._log_first50_characters(response)
         return response
 
-    def _log_transcript(self, response: str) -> None:
+    def _log_first50_characters(self, response: str) -> None:
         """Log the agent's response to a common transcript file."""
         try:
             # Just log that we would write to transcript, but don't actually write

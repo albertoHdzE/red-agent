@@ -6,7 +6,8 @@ from rich import print
 from rich.panel import Panel
 
 from red_agent.agents.base import DebateAgent
-from red_agent.agents.referee import RefereeAgent
+
+# Removed RefereeAgent import
 from red_agent.arena.langgraph_arena import build_debate_graph
 from red_agent.data.topics import topics
 from red_agent.utils.config import load_config
@@ -21,13 +22,15 @@ logger = logging.getLogger("red_agent.arena")
 
 
 def main():
+    logger.info("=========================")
     logger.info("Starting debate arena")
+    logger.info("=========================")
 
-    # Load configuration
+    # Load configuration from agents.yaml where agents are defined
     config = load_config()
     logger.info(f"Loaded configuration with {len(config['agents'])} agents")
 
-    # 🎯 Pick a topic
+    # Pick a topic randomly
     topic = random.choice(topics)
     logger.info(f"Selected topic: {topic}")
     print(
@@ -37,9 +40,10 @@ def main():
         )
     )
 
-    # 🎭 Create agents from configuration
+    # Create agents from configuration
     agents = []
     for agent_config in config["agents"]:
+        # from agents.base
         agent = DebateAgent(
             name=agent_config["name"],
             role=agent_config["role"],
@@ -52,18 +56,11 @@ def main():
 
     logger.info(f"Created agents: {[agent.name for agent in agents]}")
 
-    # Create referee with proper configuration
-    referee = RefereeAgent(
-        model="deepseek-coder-v2",  # Or use config value
-        prompt_path=Path(__file__).parent.parent.parent
-        / "red_agent/prompts/referee_csv_prompt.txt",
-    )
-
-    # 🧠 Build LangGraph
+    # Build LangGraph
     logger.info("Building debate graph")
     graph = build_debate_graph(agents)
 
-    # 🧠 Initial state
+    # Initial state
     state = {
         "topic": topic,
         "conversation": "",
@@ -71,20 +68,11 @@ def main():
         "current_agent_index": 0,
         "turn_counts": {agent.name: 0 for agent in agents},
         "config": config,
-        # Remove referee from state since we're using a global instance
     }
 
     # Initialize logs directory
     logs_dir = Path("logs")
     logs_dir.mkdir(parents=True, exist_ok=True)
-
-    # Clear previous logs - but don't delete transcript.txt
-    # if (logs_dir / "transcript.txt").exists():
-    #     (logs_dir / "transcript.txt").unlink()  # Comment out this line to preserve transcript
-    if (logs_dir / "evaluation.csv").exists():
-        (logs_dir / "evaluation.csv").unlink()
-
-    # Remove the agent-specific folder cleanup since we're not using them anymore
 
     # Debate loop
     round_count = 0
@@ -110,41 +98,13 @@ def main():
             state = graph.invoke(state)
 
             # Print agent outputs
+            logger.info("PRINTING COMMENTS FROM AGENTS")
             new_lines = (
                 state["conversation"].replace(prev_conversation, "").strip()
             )
             for line in new_lines.split("\n"):
                 if line.strip():
                     print(f"[white]{line.strip()}[/white]")
-
-            # Generate evaluation data for this round
-            comments = []
-            for agent in agents:
-                if (
-                    agent.turn_count > 0
-                ):  # Only evaluate agents who participated
-                    comment = {
-                        "character": agent.name,
-                        "comment_number": agent.turn_count,
-                        "Ethical Soundness": random.choice(
-                            ["High", "Medium", "Low"]
-                        ),
-                        "Risk Assessment": random.choice(
-                            ["Low", "Medium", "High"]
-                        ),
-                        "Alignment and Divergence": random.choice(
-                            ["Aligned", "Neutral", "Divergent"]
-                        ),
-                        "Agent's role": agent.role,
-                        "Sentiment analysis": random.choice(
-                            ["Positive", "Neutral", "Negative"]
-                        ),
-                    }
-                    comments.append(comment)
-
-            # Have referee evaluate the comments using the prompt
-            for comment in comments:
-                referee.evaluate_with_prompt(comment)
 
         except Exception as e:
             logger.error(f"Error in debate loop: {str(e)}", exc_info=True)
@@ -169,11 +129,9 @@ def main():
         print(f"\n[red]Error checking transcript: {str(e)}[/red]")
 
     print(
-        "\n[green]✅ Debate ended. Transcripts and evaluations saved.[/green]"
-    )
+        "\n[green]✅ Debate ended. Transcript saved.[/green]"
+    )  # Updated message
 
 
 if __name__ == "__main__":
     main()
-
-# Remove the transcript check code that was outside the main function

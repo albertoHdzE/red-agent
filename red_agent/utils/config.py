@@ -10,7 +10,9 @@ def load_config():
     """Load agent and debate configuration from YAML file"""
     try:
         # Update path to point to project root
-        config_path = Path(__file__).parent.parent.parent / "agents.yaml"
+        config_path = (
+            Path(__file__).parent.parent.parent / "agents_config.yaml"
+        )
         logger.info(f"Loading configuration from {config_path}")
 
         with open(config_path, "r") as f:
