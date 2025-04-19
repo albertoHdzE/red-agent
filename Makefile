@@ -59,10 +59,10 @@ commit:
 	poetry run pre-commit run --all-files
 	@echo "🔄 Staging any additional changes..."
 	git add .
+	@echo "🌿 Committing on branch: $$(git rev-parse --abbrev-ref HEAD)"
 	@echo "📝 Committing changes..."
 	git commit -m "$(message)"
 
-# Force commit bypassing pre-commit hooks
 commit-force:
 	@echo "🔄 Staging all changes..."
 	git add .
@@ -70,5 +70,6 @@ commit-force:
 	$(MAKE) format
 	@echo "🔄 Staging formatted files..."
 	git add .
+	@echo "🌿 Committing on branch: $$(git rev-parse --abbrev-ref HEAD)"
 	@echo "📝 Committing changes (bypassing hooks)..."
 	git commit -m "$(message)" --no-verify
