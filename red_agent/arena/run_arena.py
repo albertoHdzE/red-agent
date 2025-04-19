@@ -49,7 +49,8 @@ def main():
             role=agent_config["role"],
             model=agent_config["model"],
             description=agent_config.get("description", ""),
-            # Removed max_turns parameter
+            min_turns=config["debate"]["min_turns_per_agent"],
+            max_turns=config["debate"]["max_turns_per_agent"],
         )
         agents.append(agent)
 

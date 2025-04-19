@@ -13,5 +13,5 @@ agents:
 # Default debate settings
 debate:
   min_turns_per_agent: 3
-  max_turns_per_agent: 3
+  max_turns_per_agent: 10
   entry_point: Athena

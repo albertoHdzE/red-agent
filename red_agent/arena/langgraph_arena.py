@@ -88,9 +88,13 @@ def build_debate_graph(agents: List[DebateAgent]) -> StateGraph:
 
                 # Check if agent should be removed (max turns or nothing to add)
                 max_turns = state["config"]["debate"]["max_turns_per_agent"]
-                if "Nothing to add" in output or current_turn >= max_turns:
+                if (
+                    "Nothing to add" in output
+                    or current_turn >= max_turns
+                    or len(state["active_agents"]) == 1
+                ):
                     logger.info(
-                        f"Agent {agent_instance.name} has nothing to add or reached max turns, removing from active agents"
+                        f"Agent {agent_instance.name} has nothing to add, reached max turns, or is the last remaining agent, removing from active agents"
                     )
                     state["active_agents"].remove(agent_instance.name)
                 else:

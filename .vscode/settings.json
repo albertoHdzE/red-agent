@@ -9,15 +9,9 @@
 
   "python.linting.enabled": true,
   "python.linting.flake8Enabled": true,
-  "python.linting.mypyEnabled": true,
-
-  "python.linting.mypyArgs": ["--ignore-missing-imports"],
-
-  "python.analysis.diagnosticSeverityOverrides": {
-    "reportMissingImports": "none"
-  },
-
+  "python.linting.mypyEnabled": false, // Disable mypy if you only want Flake8
   "python.linting.pylintEnabled": false,
+
   "editor.defaultFormatter": "ms-python.python",
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter"

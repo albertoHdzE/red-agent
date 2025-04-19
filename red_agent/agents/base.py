@@ -8,51 +8,37 @@ logger = logging.getLogger("red_agent.agents")
 
 
 class DebateAgent:
+    memory: list[str]
+    llm: ChatOllama  # <-- Add this line
+
     def __init__(
         self,
         name: str,
         role: str,
-        model: str = "mistral",
-        description: str = "",
-        # Removed min_turns and max_turns parameters
+        model: str,
+        description: str,
+        min_turns: int,
+        max_turns: int,
     ):
-        # Agent's name used for identification in the debate
-        self.name = name
-
-        # The role/position this agent takes in debates (e.g., moderator, devil's advocate)
-        self.role = role
-
-        # Additional details about the agent's characteristics or behavior
-        self.description = description
-
-        # List to store the agent's conversation history
-        self.memory: list[str] = []
-
-        # Flag to indicate if the agent has completed their participation
-        self.finished = False
-
-        # Name of the language model being used (e.g., "mistral")
-        self.model_name = model
-
-        # Counter to track how many turns the agent has taken
-        self.turn_count = 0
-
-        # Minimum number of turns the agent must participate
-        # Removed min_turns and max_turns attributes
-        # self.min_turns = min_turns
-        # self.max_turns = max_turns
+        self.name: str = name
+        self.role: str = role
+        self.description: str = description
+        self.memory = []  # <-- No type annotation here
+        self.finished: bool = False
+        self.model_name: str = model
+        self.turn_count: int = 0
+        self.min_turns: int = min_turns
+        self.max_turns: int = max_turns
 
         logger.info(
             f"Initializing agent {name} with role {role} using model {model}"
         )
 
-        # Load prompt template
         prompt_path = (
             Path(__file__).parent.parent / "prompts/debate_prompt.jinja"
         )
-        self.template = Template(prompt_path.read_text())
+        self.template: Template = Template(prompt_path.read_text())
 
-        # Set up LLM interface
         self.llm = ChatOllama(model=self.model_name)
         logger.info(f"Agent {name} initialized successfully")
 
@@ -63,7 +49,6 @@ class DebateAgent:
             agent_description=self.description,
             topic=topic,
             conversation=conversation,
-            # Removed min_turns and max_turns from prompt rendering
         )
         logger.debug(f"Built prompt for {self.name}: {prompt[:100]}...")
         return prompt
@@ -72,16 +57,6 @@ class DebateAgent:
         logger.info(
             f"Generating comment for {self.name}, turn {self.turn_count+1}"
         )
-
-        # Removed max_turns check
-        # if self.turn_count >= self.max_turns:
-        #     logger.info(
-        #         f"Agent {self.name} reached max turns ({self.max_turns}), marking as finished"
-        #     )
-        #     self.finished = True
-        #     response = f"{self.name}: Nothing to add (reached maximum turns)"
-        #     self._log_first50_characters(response)
-        #     return response
 
         if self.finished:
             logger.info(
@@ -99,14 +74,14 @@ class DebateAgent:
             f"Conversation length for {self.name}: {len(full_conversation)} characters"
         )
 
-        # the prompt should contain the entire conversation up to this poin
+        # the prompt should contain the entire conversation up to this point
         prompt = self.build_prompt(topic, full_conversation)
 
         try:
             logger.info(
                 f"Invoking LLM for {self.name} with model {self.model_name}"
             )
-            response = self.llm.invoke(prompt).content.strip()
+            response = str(self.llm.invoke(prompt).content).strip()
             logger.info(
                 f"Raw LLM response for {self.name}: {response[:100]}..."
             )
@@ -119,7 +94,6 @@ class DebateAgent:
                 response = f"{self.name}: {response}"
 
             # Check if response contains another agent's name as a speaker
-            # This is a simple check - might need refinement for more complex cases
             for other_agent_prefix in [
                 f"{name}:"
                 for name in ["Athena", "Prometheus", "Socrates", "Plato"]
@@ -151,15 +125,28 @@ class DebateAgent:
             return response
 
         # Logic for early stopping - force more engagement
-        # Removed logic related to min_turns
         if "Nothing to add" in response:
-            logger.info(f"Agent {self.name} has nothing to add")
-            self.finished = True
+            if self.turn_count < self.min_turns:
+                logger.info(
+                    f"Agent {self.name} tried to exit early, forcing continuation"
+                )
+                response = response.replace(
+                    "Nothing to add", "Let me elaborate further"
+                )
+                self.turn_count += 1
+                logger.info(
+                    f"Agent {self.name} completed turn {self.turn_count}"
+                )
+            else:
+                logger.info(
+                    f"Agent {self.name} has nothing to add and reached min_turns, marking as finished"
+                )
+                self.turn_count += 1
+                self.finished = True
         else:
             self.turn_count += 1
             logger.info(f"Agent {self.name} completed turn {self.turn_count}")
 
-        # At the end of the method, ensure we log the response
         self.memory.append(response)
         self._log_first50_characters(response)
         return response
