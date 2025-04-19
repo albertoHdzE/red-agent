@@ -49,8 +49,7 @@ def main():
             role=agent_config["role"],
             model=agent_config["model"],
             description=agent_config.get("description", ""),
-            min_turns=config["debate"]["min_turns_per_agent"],
-            max_turns=config["debate"]["max_turns_per_agent"],
+            # Removed max_turns parameter
         )
         agents.append(agent)
 
@@ -77,10 +76,8 @@ def main():
     # Debate loop
     round_count = 0
 
-    # Set maximum rounds to prevent infinite loops
-    max_rounds = len(agents) * config["debate"]["max_turns_per_agent"] + 1
-
-    while state["active_agents"] and round_count < max_rounds:
+    # Remove max_rounds logic since agents will stop when they say "Nothing to add"
+    while len(state["active_agents"]) > 1:
         round_count += 1
         print(
             Panel.fit(

@@ -2,25 +2,23 @@
 name = "red-agent"
 version = "0.1.0"
 description = "\"Emergent debate system with LLM agents using LangGraph\""
-authors = [
-    {name = "alberto"}
-]
+authors = [{ name = "alberto" }]
 readme = "README.md"
 requires-python = ">=3.10,<4.0"
 dependencies = [
-    "langchain>=0.3.23",
-    "langgraph>=0.3.25",
-    "openai>=1.71.0",
-    "tiktoken>=0.9.0",
-    "pydantic>=2.11.2",
-    "pytest (>=8.3.5,<9.0.0)",
-    "rich (>=14.0.0,<15.0.0)",
-    "langchain-community (>=0.3.21,<0.4.0)",
-    "jinja2 (>=3.1.6,<4.0.0)",
-    "langchain-ollama (>=0.3.1,<0.4.0)",
-    "isort (>=6.0.1,<7.0.0)",
-    "types-pyyaml (>=6.0.12.20250402,<7.0.0.0)",
-    "psutil (>=7.0.0,<8.0.0)"
+  "langchain>=0.3.23",
+  "langgraph>=0.3.25",
+  "openai>=1.71.0",
+  "tiktoken>=0.9.0",
+  "pydantic>=2.11.2",
+  "pytest (>=8.3.5,<9.0.0)",
+  "rich (>=14.0.0,<15.0.0)",
+  "langchain-community (>=0.3.21,<0.4.0)",
+  "jinja2 (>=3.1.6,<4.0.0)",
+  "langchain-ollama (>=0.3.1,<0.4.0)",
+  "isort (>=6.0.1,<7.0.0)",
+  "types-pyyaml (>=6.0.12.20250402,<7.0.0.0)",
+  "psutil (>=7.0.0,<8.0.0)",
 ]
 
 [build-system]
@@ -36,7 +34,7 @@ darker = "^2.1.1"
 pre-commit = "^4.2.0"
 isort = "^6.0.1"
 mypy = "^1.15.0"
-types-PyYAML = "^6.0.12"  # Add this line
+types-PyYAML = "^6.0.12" # Add this line
 
 [tool.black]
 line-length = 79
@@ -45,8 +43,8 @@ target-version = ['py310']
 [tool.flake8]
 max-line-length = 79
 ignore = [
-  "E203",  # Whitespace before ':' (Black disagrees with Flake8)
-  "W503",  # Line break before binary operator (Black prefers this)
+  "E203", # Whitespace before ':' (Black disagrees with Flake8)
+  "W503", # Line break before binary operator (Black prefers this)
 ]
 exclude = [".venv", "build", "dist", "__pycache__"]
 
@@ -64,9 +62,43 @@ exclude = ["tests", "build", "docs"]
 
 [tool.ruff]
 line-length = 79
-select = ["E501", "F401", "F403", "F405", "F541", "F811", "F823", "F841", "W292", "W293", "W505", "W605"]
+select = [
+  "E501",
+  "F401",
+  "F403",
+  "F405",
+  "F541",
+  "F811",
+  "F823",
+  "F841",
+  "W292",
+  "W293",
+  "W505",
+  "W605",
+]
 ignore = ["E203", "E266", "E501"]
 
 [tool.poetry.scripts]
 # Define scripts that call Python functions
 format = "scripts.format:main"
+
+[tool.pyright]
+include = ["red_agent"] # Your source code folder
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  "**/.git",
+  "**/.venv",        # Make sure this matches your venv folder name if created by poetry locally
+  "**/venv",
+  "**/.env",
+  "**/build",
+  "**/dist",
+  "**/logs",
+  "**/.*cache",
+]
+# reportMissingImports = true # This setting enables the error
+# pythonVersion = "3.10" # Specify your Python version if needed
+# pythonPlatform = "Linux" # Or "Windows", "Darwin"
+
+# If you only want basic linting/analysis, you can disable type checking:
+# typeCheckingMode = "off"

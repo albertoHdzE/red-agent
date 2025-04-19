@@ -1,0 +1,4 @@
+{
+    "include": ["/Users/beto/Documents/Projects/red-agent"],
+    "exclude": ["**/.venv", "**/__pycache__", "**/node_modules", "**/.poetry"]
+  }

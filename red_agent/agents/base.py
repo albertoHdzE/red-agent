@@ -14,8 +14,7 @@ class DebateAgent:
         role: str,
         model: str = "mistral",
         description: str = "",
-        min_turns: int = 3,
-        max_turns: int = 3,
+        # Removed min_turns and max_turns parameters
     ):
         # Agent's name used for identification in the debate
         self.name = name
@@ -39,10 +38,9 @@ class DebateAgent:
         self.turn_count = 0
 
         # Minimum number of turns the agent must participate
-        self.min_turns = min_turns
-
-        # Maximum number of turns the agent is allowed to participate
-        self.max_turns = max_turns
+        # Removed min_turns and max_turns attributes
+        # self.min_turns = min_turns
+        # self.max_turns = max_turns
 
         logger.info(
             f"Initializing agent {name} with role {role} using model {model}"
@@ -65,8 +63,7 @@ class DebateAgent:
             agent_description=self.description,
             topic=topic,
             conversation=conversation,
-            min_turns=self.min_turns,
-            max_turns=self.max_turns,
+            # Removed min_turns and max_turns from prompt rendering
         )
         logger.debug(f"Built prompt for {self.name}: {prompt[:100]}...")
         return prompt
@@ -76,15 +73,15 @@ class DebateAgent:
             f"Generating comment for {self.name}, turn {self.turn_count+1}"
         )
 
-        # Check if max_turns is reached. If so, forces the end
-        if self.turn_count >= self.max_turns:
-            logger.info(
-                f"Agent {self.name} reached max turns ({self.max_turns}), marking as finished"
-            )
-            self.finished = True
-            response = f"{self.name}: Nothing to add (reached maximum turns)"
-            self._log_first50_characters(response)
-            return response
+        # Removed max_turns check
+        # if self.turn_count >= self.max_turns:
+        #     logger.info(
+        #         f"Agent {self.name} reached max turns ({self.max_turns}), marking as finished"
+        #     )
+        #     self.finished = True
+        #     response = f"{self.name}: Nothing to add (reached maximum turns)"
+        #     self._log_first50_characters(response)
+        #     return response
 
         if self.finished:
             logger.info(
@@ -154,28 +151,10 @@ class DebateAgent:
             return response
 
         # Logic for early stopping - force more engagement
-        if "Nothing to add" in response and self.turn_count < self.min_turns:
-            logger.info(
-                f"Agent {self.name} tried to exit early, forcing continuation"
-            )
-            # Replace "Nothing to add" with a continuation prompt
-            response = response.replace(
-                "Nothing to add", "Let me elaborate further"
-            )
-
-        # Only allow finishing after minimum turns
+        # Removed logic related to min_turns
         if "Nothing to add" in response:
             logger.info(f"Agent {self.name} has nothing to add")
-            self.turn_count += 1
-            if self.turn_count >= self.min_turns:
-                logger.info(
-                    f"Agent {self.name} has completed minimum turns, marking as finished"
-                )
-                self.finished = True
-            else:
-                logger.info(
-                    f"Agent {self.name} hasn't completed minimum turns yet, continuing"
-                )
+            self.finished = True
         else:
             self.turn_count += 1
             logger.info(f"Agent {self.name} completed turn {self.turn_count}")
