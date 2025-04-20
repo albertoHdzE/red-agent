@@ -87,4 +87,6 @@ Agreed-topics: "Eath's caring and Future perspective"
 Disagreed-topics: "Equality of opportunity"
 Sentiment analysis: "Neutral"
 
+Important note: Note that the above template is just a random example. What you have to do is to evaluate the target comment and to write the values of your evaluation in each of the keys of the above template.
+
 Here is the text to evaluate: [here is the comment(s) to evaluate]

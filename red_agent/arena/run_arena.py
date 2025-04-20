@@ -6,8 +6,7 @@ from rich import print
 from rich.panel import Panel
 
 from red_agent.agents.base import DebateAgent
-
-# Removed RefereeAgent import
+from red_agent.agents.referee import RefereeAgent
 from red_agent.arena.langgraph_arena import build_debate_graph
 from red_agent.data.topics import topics
 from red_agent.utils.config import load_config
@@ -21,11 +20,20 @@ logging.basicConfig(
 logger = logging.getLogger("red_agent.arena")
 
 
-def main():
-    logger.info("=========================")
-    logger.info("Starting debate arena")
-    logger.info("=========================")
+def run_referee_evaluation(logs_dir):
+    referee = RefereeAgent()
+    transcript_path = logs_dir / "transcript.txt"
+    evaluation_csv_path = logs_dir / "evaluation.csv"
+    print("[yellow]🔍 Running referee evaluation on transcript...[/yellow]")
+    logger.info("Starting referee evaluation on transcript.")
+    referee.evaluate_transcript(transcript_path, evaluation_csv_path)
+    print(
+        "[green]✅ Referee evaluation complete. Results saved to evaluation.csv[/green]"
+    )
+    logger.info("Referee evaluation complete.")
 
+
+def main():
     # Load configuration from agents.yaml where agents are defined
     config = load_config()
     logger.info(f"Loaded configuration with {len(config['agents'])} agents")
@@ -129,6 +137,13 @@ def main():
     print(
         "\n[green]✅ Debate ended. Transcript saved.[/green]"
     )  # Updated message
+
+    # Run referee evaluation after debate ends
+    try:
+        run_referee_evaluation(logs_dir)
+    except Exception as e:
+        print(f"[red]Error during referee evaluation: {e}[/red]")
+        logger.error(f"Error during referee evaluation: {e}", exc_info=True)
 
 
 if __name__ == "__main__":
