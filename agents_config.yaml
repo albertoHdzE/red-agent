@@ -15,3 +15,4 @@ debate:
   min_turns_per_agent: 3
   max_turns_per_agent: 10
   entry_point: Athena
+  testing_mode: true # Set to false for full topic processing

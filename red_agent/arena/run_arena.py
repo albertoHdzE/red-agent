@@ -38,9 +38,18 @@ def main():
     config = load_config()
     logger.info(f"Loaded configuration with {len(config['agents'])} agents")
 
-    # Pick a topic randomly
-    topic = random.choice(topics)
-    logger.info(f"Selected topic: {topic}")
+    # Handle topic selection based on testing mode
+    if config["debate"]["testing_mode"]:
+        # Pick a topic randomly for testing mode
+        topic = random.choice(topics)
+        logger.info(f"Testing mode: Selected random topic: {topic}")
+    else:
+        # Process all topics sequentially in full mode
+        topic = topics[0]  # Start with first topic
+        logger.info(
+            f"Full mode: Processing all topics, starting with: {topic}"
+        )
+
     print(
         Panel.fit(
             f"[bold yellow]🧠 Debate Topic:[/bold yellow]\n{topic}",
