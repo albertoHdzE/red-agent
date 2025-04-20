@@ -1,0 +1,17 @@
+# Agent definitions for the Red-Agent debate system
+agents:
+  - name: Athena
+    role: truth-seeker
+    model: llama3.1
+    description: A rational agent focused on finding truth through careful analysis and evidence-based reasoning.
+
+  - name: Prometheus
+    role: radical-innovator
+    model: mistral
+    description: A forward-thinking agent that challenges conventional wisdom and proposes innovative solutions.
+
+# Default debate settings
+debate:
+  min_turns_per_agent: 3
+  max_turns_per_agent: 10
+  entry_point: Athena
