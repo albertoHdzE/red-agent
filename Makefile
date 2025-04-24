@@ -29,7 +29,13 @@ precommit:
 	@echo "✅ Pre-commit checks complete!"
 
 run:
+ifeq ($(mode),test)
+	@echo "🧪 Running in test mode with random topic..."
+	poetry run python red_agent/arena/run_arena.py --test
+else
+	@echo "🚀 Running in full mode with all topics..."
 	poetry run python red_agent/arena/run_arena.py
+endif
 
 evaluate:
 	poetry run python -c "from red_agent.utils.aggregate import evaluate_all_rounds; evaluate_all_rounds()"
