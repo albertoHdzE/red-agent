@@ -23,14 +23,40 @@ logger = logging.getLogger("red_agent.arena")
 def run_referee_evaluation(logs_dir):
     referee = RefereeAgent()
     transcript_path = logs_dir / "transcript.txt"
-    evaluation_csv_path = logs_dir / "evaluation.csv"
+    evaluation_csv_path = (
+        logs_dir / "evaluation.csv"
+    )  # Fixed the path to point to evaluation.csv
     print("[yellow]🔍 Running referee evaluation on transcript...[/yellow]")
     logger.info("Starting referee evaluation on transcript.")
-    referee.evaluate_transcript(transcript_path, evaluation_csv_path)
-    print(
-        "[green]✅ Referee evaluation complete. Results saved to evaluation.csv[/green]"
-    )
-    logger.info("Referee evaluation complete.")
+
+    # Verify transcript exists
+    if not transcript_path.exists():
+        logger.error(f"Transcript file {transcript_path} does not exist.")
+        print(
+            f"[red]Error: Transcript file {transcript_path} does not exist.[/red]"
+        )
+        return
+
+    with open(transcript_path, "r") as f:
+        transcript_content = f.read()
+
+    if not transcript_content.strip():
+        logger.error("Transcript file is empty.")
+        print("[red]Error: Transcript file is empty.[/red]")
+        return
+
+    # Run the evaluation
+    try:
+        referee.evaluate_transcript(transcript_path, evaluation_csv_path)
+        print(
+            f"[green]✅ Referee evaluation complete. Results saved to {evaluation_csv_path}[/green]"
+        )
+        logger.info("Referee evaluation complete.")
+    except Exception as e:
+        logger.error(
+            f"Error during referee evaluation: {str(e)}", exc_info=True
+        )
+        print(f"[red]Error during referee evaluation: {str(e)}[/red]")
 
 
 def main():
@@ -126,9 +152,6 @@ def main():
             print(f"[red]Error in debate: {str(e)}[/red]")
             break
 
-    # Run evaluations
-    # After the evaluate_all_rounds() call
-
     # Check transcript file
     try:
         transcript_path = logs_dir / "transcript.txt"
@@ -143,9 +166,7 @@ def main():
     except Exception as e:
         print(f"\n[red]Error checking transcript: {str(e)}[/red]")
 
-    print(
-        "\n[green]✅ Debate ended. Transcript saved.[/green]"
-    )  # Updated message
+    print("\n[green]✅ Debate ended. Transcript saved.[/green]")
 
     # Run referee evaluation after debate ends
     try:
