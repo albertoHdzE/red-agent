@@ -20,12 +20,10 @@ logging.basicConfig(
 logger = logging.getLogger("red_agent.arena")
 
 
-def run_referee_evaluation(logs_dir):
+def run_referee_evaluation(logs_dir, topic):
     referee = RefereeAgent()
     transcript_path = logs_dir / "transcript.txt"
-    evaluation_csv_path = (
-        logs_dir / "evaluation.csv"
-    )  # Fixed the path to point to evaluation.csv
+    evaluation_csv_path = logs_dir / "evaluation.csv"
     print("[yellow]🔍 Running referee evaluation on transcript...[/yellow]")
     logger.info("Starting referee evaluation on transcript.")
 
@@ -45,9 +43,11 @@ def run_referee_evaluation(logs_dir):
         print("[red]Error: Transcript file is empty.[/red]")
         return
 
-    # Run the evaluation
+    # Run the evaluation with the topic
     try:
-        referee.evaluate_transcript(transcript_path, evaluation_csv_path)
+        referee.evaluate_transcript(
+            transcript_path, evaluation_csv_path, topic
+        )
         print(
             f"[green]✅ Referee evaluation complete. Results saved to {evaluation_csv_path}[/green]"
         )
@@ -168,9 +168,9 @@ def main():
 
     print("\n[green]✅ Debate ended. Transcript saved.[/green]")
 
-    # Run referee evaluation after debate ends
+    # Run referee evaluation after debate ends, passing the topic
     try:
-        run_referee_evaluation(logs_dir)
+        run_referee_evaluation(logs_dir, topic)
     except Exception as e:
         print(f"[red]Error during referee evaluation: {e}[/red]")
         logger.error(f"Error during referee evaluation: {e}", exc_info=True)

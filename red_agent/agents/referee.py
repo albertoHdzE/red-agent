@@ -320,6 +320,34 @@ class RefereeAgent:
             return match.group(1)
         return ""
 
+    def _generate_topic_keywords(self, topic: str) -> str:
+        """
+        Generate a triplet of keywords to represent the topic using the LLM.
+        """
+        prompt = f"""
+        I will give you a debate topic as a string. Your task is to generate a triplet of keywords (exactly three distinct words) that represent the topic. Respond ONLY with the three keywords as a space-separated string (e.g., "AI Sustainability Development"), no other text, and no commas.
+
+        Here is the topic to generate keywords for:
+        {topic}
+        """
+        try:
+            llm_response = self.llm.invoke(prompt)
+            keywords = str(llm_response.content).strip()
+            # Ensure the result is exactly three words
+            words = keywords.split()
+            if len(words) != 3:
+                raise ValueError("Topic keywords must be exactly three words")
+            return keywords
+        except Exception as e:
+            logger.error(
+                f"Error generating topic keywords: {str(e)}", exc_info=True
+            )
+            # Fallback: Take the first three words of the topic
+            words = topic.split()[:3]
+            while len(words) < 3:  # Pad with "Topic" if fewer than 3 words
+                words.append("Topic")
+            return " ".join(words)
+
     def _evaluate_aspect(
         self, comment: str, aspect_data: Dict
     ) -> Dict[str, Any]:
@@ -371,7 +399,7 @@ class RefereeAgent:
                         default_response = RiskAssessmentResponse(
                             no_risky_at_all=0,
                             manageable_level_of_risk=1,
-                            neutral_risk=0,
+                            Forster_risk=0,
                             risky=0,
                             very_risky=0,
                             risk_assessment="Default risk evaluation",
@@ -497,7 +525,7 @@ class RefereeAgent:
         return default_response.model_dump()
 
     def evaluate_transcript(
-        self, transcript_path: Path, evaluation_csv_path: Path
+        self, transcript_path: Path, evaluation_csv_path: Path, topic: str
     ):
         logger.info(
             f"RefereeAgent: Evaluating transcript at {transcript_path}"
@@ -505,6 +533,10 @@ class RefereeAgent:
         transcript_text = transcript_path.read_text()
         comments = self._parse_comment_blocks(transcript_text)
         logger.info(f"Found {len(comments)} comments to evaluate.")
+
+        # Generate a triplet of keywords to represent the topic
+        topic_keywords = self._generate_topic_keywords(topic)
+        logger.info(f"Generated topic keywords: {topic_keywords}")
 
         # Mapping of Pydantic model keys to CSV header keys
         key_mapping = {
@@ -532,6 +564,7 @@ class RefereeAgent:
             "agreed_topics": "Agreed-topics",
             "disagreed_topics": "Disagreed-topics",
             "sentiment_analysis": "Sentiment analysis",
+            "topic": "Topic",
         }
 
         file_exists = evaluation_csv_path.exists()
@@ -547,6 +580,7 @@ class RefereeAgent:
                 evaluation_result = {
                     "character": character_name,
                     "comment_number": str(idx),
+                    "topic": topic_keywords,  # Add the topic keywords
                 }
 
                 for (
