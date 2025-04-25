@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 import pydantic
 from langchain_community.chat_models import ChatOllama
+from textblob import TextBlob
 
 logger = logging.getLogger("red_agent.agents.referee")
 
@@ -159,6 +160,27 @@ class SentimentAnalysisResponse(pydantic.BaseModel):
     sentiment_analysis: str = pydantic.Field(
         description="Sentiment of the comment: Positive, Neutral, or Negative"
     )
+    sentiment_score: float = pydantic.Field(
+        description="Numerical score of sentiment: ranges from -1.0 (very negative) to 1.0 (very positive)"
+    )
+
+    @pydantic.model_validator(mode="after")
+    def validate_fields(self):
+        # Validate sentiment_score range
+        if not -1.0 <= self.sentiment_score <= 1.0:
+            raise ValueError("Sentiment score must be between -1.0 and 1.0")
+
+        # Validate sentiment_analysis based on sentiment_score
+        expected_label = (
+            "Positive"
+            if self.sentiment_score > 0
+            else "Negative" if self.sentiment_score < 0 else "Neutral"
+        )
+        if self.sentiment_analysis != expected_label:
+            raise ValueError(
+                f"Sentiment analysis must be {expected_label} for score {self.sentiment_score}"
+            )
+        return self
 
 
 class RefereeAgent:
@@ -176,6 +198,11 @@ class RefereeAgent:
         self.output_keys = self._parse_output_template_keys(
             output_template_path.read_text()
         )
+
+        # Ensure "Sentiment score" is in output_keys
+        if "Sentiment score" not in self.output_keys:
+            self.output_keys.append("Sentiment score")
+            logger.info("Added 'Sentiment score' to output_keys")
 
         self.evaluation_aspects = {
             "ethical_soundness": {
@@ -273,11 +300,7 @@ class RefereeAgent:
             },
             "sentiment_analysis": {
                 "response_model": SentimentAnalysisResponse,
-                "prompt": """Respond ONLY with a valid JSON object in the following format, no other text, and do NOT wrap the JSON in markdown code blocks (e.g., ```json):
-                {
-                    "sentiment_analysis": "Positive"
-                }
-                Determine sentiment of the comment: Positive, Neutral, or Negative.""",
+                "prompt": "",  # No prompt needed since we're using TextBlob
             },
         }
 
@@ -325,7 +348,7 @@ class RefereeAgent:
         Generate a triplet of keywords to represent the topic using the LLM.
         """
         prompt = f"""
-        I will give you a debate topic as a string. Your task is to generate a triplet of keywords (exactly three distinct words) that represent the topic. Respond ONLY with the three keywords as a space-separated string (e.g., "AI Sustainability Development"), no other text, and no commas.
+        I will give you a Defense topic as a string. Your task is to generate a triplet of keywords (exactly three distinct words) that represent the topic. Respond ONLY with the three keywords as a space-separated string (e.g., "AI Sustainability Development"), no other text, and no commas.
 
         Here is the topic to generate keywords for:
         {topic}
@@ -351,6 +374,37 @@ class RefereeAgent:
     def _evaluate_aspect(
         self, comment: str, aspect_data: Dict
     ) -> Dict[str, Any]:
+        # Special handling for sentiment_analysis using TextBlob
+        if aspect_data["response_model"] == SentimentAnalysisResponse:
+            try:
+                # Remove the character name prefix (e.g., "Agent1: ") to get the comment text
+                comment_text = re.sub(
+                    r"^[A-Za-z0-9_]+:\s*", "", comment
+                ).strip()
+                # Calculate sentiment polarity using TextBlob
+                sentiment_score = TextBlob(comment_text).sentiment.polarity
+                # Derive sentiment label based on the score
+                sentiment_label = (
+                    "Positive"
+                    if sentiment_score > 0
+                    else "Negative" if sentiment_score < 0 else "Neutral"
+                )
+                response = SentimentAnalysisResponse(
+                    sentiment_analysis=sentiment_label,
+                    sentiment_score=sentiment_score,
+                )
+                return response.model_dump()
+            except Exception as e:
+                logger.error(
+                    f"Error calculating sentiment score with TextBlob: {str(e)}"
+                )
+                # Fallback to a neutral score
+                default_response = SentimentAnalysisResponse(
+                    sentiment_analysis="Neutral", sentiment_score=0.0
+                )
+                return default_response.model_dump()
+
+        # Existing LLM-based evaluation for other aspects
         aspect_prompt = self._format_aspect_prompt(
             comment, aspect_data["prompt"]
         )
@@ -399,7 +453,7 @@ class RefereeAgent:
                         default_response = RiskAssessmentResponse(
                             no_risky_at_all=0,
                             manageable_level_of_risk=1,
-                            Forster_risk=0,
+                            neutral_risk=0,
                             risky=0,
                             very_risky=0,
                             risk_assessment="Default risk evaluation",
@@ -457,7 +511,7 @@ class RefereeAgent:
                         == SentimentAnalysisResponse
                     ):
                         default_response = SentimentAnalysisResponse(
-                            sentiment_analysis="Neutral"
+                            sentiment_analysis="Neutral", sentiment_score=0.0
                         )
                     else:
                         raise ValueError(
@@ -516,7 +570,7 @@ class RefereeAgent:
             default_response = DisagreedTopicsResponse(disagreed_topics="***")
         elif aspect_data["response_model"] == SentimentAnalysisResponse:
             default_response = SentimentAnalysisResponse(
-                sentiment_analysis="Neutral"
+                sentiment_analysis="Neutral", sentiment_score=0.0
             )
         else:
             raise ValueError(
@@ -564,6 +618,7 @@ class RefereeAgent:
             "agreed_topics": "Agreed-topics",
             "disagreed_topics": "Disagreed-topics",
             "sentiment_analysis": "Sentiment analysis",
+            "sentiment_score": "Sentiment score",
             "topic": "Topic",
         }
 
@@ -580,7 +635,7 @@ class RefereeAgent:
                 evaluation_result = {
                     "character": character_name,
                     "comment_number": str(idx),
-                    "topic": topic_keywords,  # Add the topic keywords
+                    "topic": topic_keywords,
                 }
 
                 for (
