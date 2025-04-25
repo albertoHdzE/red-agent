@@ -17,6 +17,7 @@ class ArenaState(TypedDict):
     current_agent_index: int
     turn_counts: Dict[str, int]
     config: Dict[str, Any]
+    topic_index: int  # Add topic_index to state
 
 
 def build_debate_graph(agents: List[DebateAgent]) -> StateGraph:
@@ -54,11 +55,18 @@ def build_debate_graph(agents: List[DebateAgent]) -> StateGraph:
 
                 # In the node_fn function
                 try:
-                    # Explicitly log to transcript here as well
+                    # Explicitly log to transcript here
                     logs_dir = Path(__file__).parent.parent.parent / "logs"
                     logs_dir.mkdir(parents=True, exist_ok=True)
 
-                    transcript_path = logs_dir / "transcript.txt"
+                    # Use topic_index to name the transcript file
+                    if state["topic_index"] is not None:
+                        transcript_path = (
+                            logs_dir / f"transcript_{state['topic_index']}.txt"
+                        )
+                    else:
+                        transcript_path = logs_dir / "transcript.txt"
+
                     logger.debug(
                         f"LangGraph writing to transcript at: {transcript_path.absolute()}"
                     )

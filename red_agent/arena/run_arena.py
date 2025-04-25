@@ -1,3 +1,4 @@
+import argparse
 import logging
 import random
 from pathlib import Path
@@ -20,88 +21,46 @@ logging.basicConfig(
 logger = logging.getLogger("red_agent.arena")
 
 
-def run_referee_evaluation(logs_dir, topic):
-    referee = RefereeAgent()
-    transcript_path = logs_dir / "transcript.txt"
-    evaluation_csv_path = logs_dir / "evaluation.csv"
-    print("[yellow]🔍 Running referee evaluation on transcript...[/yellow]")
-    logger.info("Starting referee evaluation on transcript.")
+def run_single_topic(topic, topic_index, agents, config, logs_dir):
+    """
+    Run a debate for a single topic and save the transcript.
 
-    # Verify transcript exists
-    if not transcript_path.exists():
-        logger.error(f"Transcript file {transcript_path} does not exist.")
-        print(
-            f"[red]Error: Transcript file {transcript_path} does not exist.[/red]"
-        )
-        return
-
-    with open(transcript_path, "r") as f:
-        transcript_content = f.read()
-
-    if not transcript_content.strip():
-        logger.error("Transcript file is empty.")
-        print("[red]Error: Transcript file is empty.[/red]")
-        return
-
-    # Run the evaluation with the topic
-    try:
-        referee.evaluate_transcript(
-            transcript_path, evaluation_csv_path, topic
-        )
-        print(
-            f"[green]✅ Referee evaluation complete. Results saved to {evaluation_csv_path}[/green]"
-        )
-        logger.info("Referee evaluation complete.")
-    except Exception as e:
-        logger.error(
-            f"Error during referee evaluation: {str(e)}", exc_info=True
-        )
-        print(f"[red]Error during referee evaluation: {str(e)}[/red]")
-
-
-def main():
-    # Load configuration from agents.yaml where agents are defined
-    config = load_config()
-    logger.info(f"Loaded configuration with {len(config['agents'])} agents")
-
-    # Handle topic selection based on testing mode
-    if config["debate"]["testing_mode"]:
-        # Pick a topic randomly for testing mode
-        topic = random.choice(topics)
-        logger.info(f"Testing mode: Selected random topic: {topic}")
-    else:
-        # Process all topics sequentially in full mode
-        topic = topics[0]  # Start with first topic
-        logger.info(
-            f"Full mode: Processing all topics, starting with: {topic}"
-        )
-
+    Args:
+        topic (str): The topic to debate.
+        topic_index (int or None): The index of the topic (1-based) for naming the transcript file.
+                                   If None, saves to transcript.txt (testing mode).
+        agents (list): List of DebateAgent instances.
+        config (dict): Configuration dictionary.
+        logs_dir (Path): Directory to save the transcript.
+    """
+    logger.info(f"Processing topic: {topic}")
     print(
         Panel.fit(
-            f"[bold yellow]🧠 Debate Topic:[/bold yellow]\n{topic}",
-            title="TOPIC",
+            f"[bold yellow]🧠 Debate Topic{' ' + str(topic_index) if topic_index is not None else ''}:[/bold yellow]\n{topic}",
+            title=f"TOPIC{(' ' + str(topic_index)) if topic_index is not None else ''}",
         )
     )
 
-    # Create agents from configuration
-    agents = []
-    for agent_config in config["agents"]:
-        # from agents.base
-        agent = DebateAgent(
-            name=agent_config["name"],
-            role=agent_config["role"],
-            model=agent_config["model"],
-            description=agent_config.get("description", ""),
-            min_turns=config["debate"]["min_turns_per_agent"],
-            max_turns=config["debate"]["max_turns_per_agent"],
-        )
-        agents.append(agent)
+    # Determine transcript path
+    if topic_index is not None:
+        transcript_path = logs_dir / f"transcript_{topic_index}.txt"
+    else:
+        transcript_path = logs_dir / "transcript.txt"
 
-    logger.info(f"Created agents: {[agent.name for agent in agents]}")
+    # Clear the transcript file if it exists
+    if transcript_path.exists():
+        transcript_path.unlink()
+        logger.info(f"Removed existing {transcript_path} for topic.")
 
     # Build LangGraph
     logger.info("Building debate graph")
     graph = build_debate_graph(agents)
+
+    # Reset agent states
+    for agent in agents:
+        agent.memory = []
+        agent.finished = False
+        agent.turn_count = 0
 
     # Initial state
     state = {
@@ -111,22 +70,17 @@ def main():
         "current_agent_index": 0,
         "turn_counts": {agent.name: 0 for agent in agents},
         "config": config,
+        "topic_index": topic_index,  # Pass topic index for transcript naming
     }
-
-    # Initialize logs directory
-    logs_dir = Path("logs")
-    logs_dir.mkdir(parents=True, exist_ok=True)
 
     # Debate loop
     round_count = 0
-
-    # Remove max_rounds logic since agents will stop when they say "Nothing to add"
     while len(state["active_agents"]) > 1:
         round_count += 1
         print(
             Panel.fit(
                 f"🔁 Round {round_count}\nActive agents: [bold]{', '.join(state['active_agents'])}[/bold]",
-                title=f"Round {round_count}",
+                title=f"{'Topic ' + str(topic_index) + ' - ' if topic_index is not None else ''}Round {round_count}",
                 border_style="white",
                 padding=(0, 1),
                 width=40,
@@ -134,7 +88,9 @@ def main():
         )
 
         try:
-            logger.info(f"Invoking graph for round {round_count}")
+            logger.info(
+                f"Invoking graph for {'topic ' + str(topic_index) + ', ' if topic_index is not None else ''}round {round_count}"
+            )
             prev_conversation = state["conversation"]
             state = graph.invoke(state)
 
@@ -148,29 +104,188 @@ def main():
                     print(f"[white]{line.strip()}[/white]")
 
         except Exception as e:
-            logger.error(f"Error in debate loop: {str(e)}", exc_info=True)
-            print(f"[red]Error in debate: {str(e)}[/red]")
+            logger.error(
+                f"Error in debate loop for {'topic ' + str(topic_index) if topic_index is not None else 'topic'}: {str(e)}",
+                exc_info=True,
+            )
+            print(
+                f"[red]Error in debate for {'topic ' + str(topic_index) if topic_index is not None else 'topic'}: {str(e)}[/red]"
+            )
             break
 
     # Check transcript file
     try:
-        transcript_path = logs_dir / "transcript.txt"
         if transcript_path.exists():
             with open(transcript_path, "r") as f:
                 content = f.read()
             print(
-                f"\n[blue]Transcript saved with {len(content)} bytes of content[/blue]"
+                f"\n[blue]Transcript {transcript_path.name} saved with {len(content)} bytes of content[/blue]"
             )
         else:
-            print("\n[red]Warning: Transcript file does not exist![/red]")
+            print(
+                f"\n[red]Warning: Transcript file {transcript_path.name} does not exist![/red]"
+            )
     except Exception as e:
-        print(f"\n[red]Error checking transcript: {str(e)}[/red]")
+        print(
+            f"\n[red]Error checking transcript {transcript_path.name}: {str(e)}[/red]"
+        )
 
-    print("\n[green]✅ Debate ended. Transcript saved.[/green]")
+    print(
+        f"\n[green]✅ Debate for {'topic ' + str(topic_index) if topic_index is not None else 'topic'} ended. Transcript saved.[/green]"
+    )
 
-    # Run referee evaluation after debate ends, passing the topic
+
+def run_referee_evaluation(logs_dir, testing_mode):
+    referee = RefereeAgent()
+    evaluation_csv_path = logs_dir / "evaluation.csv"
+    print(
+        "[yellow]🔍 Running referee evaluation on all transcripts...[/yellow]"
+    )
+    logger.info("Starting referee evaluation on all transcripts.")
+
+    # Determine which transcript files to evaluate based on the mode
+    if testing_mode:
+        transcript_files = [logs_dir / "transcript.txt"]
+    else:
+        transcript_files = sorted(
+            logs_dir.glob("transcript_*.txt"),
+            key=lambda p: int(p.stem.split("_")[1]),
+        )
+
+    if not transcript_files:
+        logger.error("No transcript files found in logs directory.")
+        print("[red]Error: No transcript files found in logs directory.[/red]")
+        return
+
+    # Clear the evaluation CSV if it exists to start fresh
+    if evaluation_csv_path.exists():
+        evaluation_csv_path.unlink()
+        logger.info(f"Removed existing {evaluation_csv_path} to start fresh.")
+
+    for transcript_path in transcript_files:
+        # Extract topic index based on filename
+        if testing_mode:
+            # In testing mode, topic is randomly chosen, but we don't have the index
+            # We can use a placeholder topic index (e.g., 0) since it's just one topic
+            topic_index = 0
+            topic = topics[
+                topic_index
+            ]  # We'll use the first topic as a placeholder
+            logger.info(
+                f"Evaluating transcript for testing mode: {transcript_path}"
+            )
+        else:
+            topic_index = (
+                int(transcript_path.stem.split("_")[1]) - 1
+            )  # Convert to 0-based index
+            topic = topics[topic_index]
+            logger.info(
+                f"Evaluating transcript for topic {topic_index + 1}: {topic}"
+            )
+
+        # Verify transcript exists and is not empty
+        if not transcript_path.exists():
+            logger.error(f"Transcript file {transcript_path} does not exist.")
+            print(
+                f"[red]Error: Transcript file {transcript_path} does not exist.[/red]"
+            )
+            continue
+
+        with open(transcript_path, "r") as f:
+            transcript_content = f.read()
+
+        if not transcript_content.strip():
+            logger.error(f"Transcript file {transcript_path} is empty.")
+            print(
+                f"[red]Error: Transcript file {transcript_path} is empty.[/red]"
+            )
+            continue
+
+        # Run the evaluation with the topic
+        try:
+            referee.evaluate_transcript(
+                transcript_path, evaluation_csv_path, topic
+            )
+            print(
+                f"[green]✅ Evaluated transcript {transcript_path}. Results appended to {evaluation_csv_path}[/green]"
+            )
+            logger.info(f"Referee evaluation complete for {transcript_path}.")
+        except Exception as e:
+            logger.error(
+                f"Error during referee evaluation of {transcript_path}: {str(e)}",
+                exc_info=True,
+            )
+            print(
+                f"[red]Error during referee evaluation of {transcript_path}: {str(e)}[/red]"
+            )
+
+
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Run the debate arena.")
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        help="Run in test mode with a random topic",
+    )
+    args = parser.parse_args()
+
+    # Load configuration from agents.yaml where agents are defined
+    config = load_config()
+    logger.info(f"Loaded configuration with {len(config['agents'])} agents")
+
+    # Override testing_mode based on command-line argument
+    testing_mode = args.test
+    config["debate"]["testing_mode"] = testing_mode
+    logger.info(f"Running in {'testing' if testing_mode else 'real'} mode")
+
+    # Initialize logs directory
+    logs_dir = Path("logs")
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create agents from configuration
+    agents = []
+    for agent_config in config["agents"]:
+        agent = DebateAgent(
+            name=agent_config["name"],
+            role=agent_config["role"],
+            model=agent_config["model"],
+            description=agent_config.get("description", ""),
+            min_turns=config["debate"]["min_turns_per_agent"],
+            max_turns=config["debate"]["max_turns_per_agent"],
+        )
+        agents.append(agent)
+
+    logger.info(f"Created agents: {[agent.name for agent in agents]}")
+
+    if testing_mode:
+        # Testing mode: Run a single random topic
+        topic = random.choice(topics)
+        logger.info(f"Testing mode: Selected random topic: {topic}")
+        run_single_topic(
+            topic,
+            topic_index=None,
+            agents=agents,
+            config=config,
+            logs_dir=logs_dir,
+        )
+    else:
+        # Real mode: Run all topics
+        logger.info("Real mode: Generating transcripts for all topics")
+        for topic_idx, topic in enumerate(
+            topics, 1
+        ):  # 1-based index for filenames
+            run_single_topic(
+                topic,
+                topic_index=topic_idx,
+                agents=agents,
+                config=config,
+                logs_dir=logs_dir,
+            )
+
+    # After all transcripts are generated, run referee evaluation
     try:
-        run_referee_evaluation(logs_dir, topic)
+        run_referee_evaluation(logs_dir, testing_mode=testing_mode)
     except Exception as e:
         print(f"[red]Error during referee evaluation: {e}[/red]")
         logger.error(f"Error during referee evaluation: {e}", exc_info=True)
