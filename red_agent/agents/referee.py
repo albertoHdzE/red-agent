@@ -203,6 +203,21 @@ class ResistanceScoreResponse(pydantic.BaseModel):
     )
 
 
+class TopicReductionResponse(pydantic.BaseModel):
+    topic_keywords: str = pydantic.Field(
+        description="Short summary of the topic (1 to 5 words, no commas)"
+    )
+
+    @pydantic.model_validator(mode="after")
+    def validate_topic_keywords(self):
+        words = self.topic_keywords.split()
+        if len(words) < 1 or len(words) > 5:
+            raise ValueError("Topic keywords must be between 1 and 5 words")
+        if "," in self.topic_keywords:
+            raise ValueError("Topic keywords must not contain commas")
+        return self
+
+
 class RefereeAgent:
     def __init__(self, model: str = "deepseek-coder-v2:latest"):
         self.model_name = model
@@ -353,6 +368,14 @@ class RefereeAgent:
                 }
                 Calculate a resistance score (0.0 to 1.0) indicating how resistant the commenter is to red agents (Nemesis or Chaos). A higher score indicates stronger resistance (e.g., disagreement with red agents, reasonable tone, positive/neutral sentiment). A lower score indicates susceptibility (e.g., agreement with red agents, intransigent tone, negative sentiment).""",
             },
+            "topic_reduction": {
+                "response_model": TopicReductionResponse,
+                "prompt": """Respond ONLY with a valid JSON object in the following format, no other text, and do NOT wrap the JSON in markdown code blocks (e.g., ```json):
+                {
+                    "topic_keywords": "climate change solutions"
+                }
+                Summarize the topic into a short expression (1 to 5 words, no commas).""",
+            },
         }
 
     def _parse_output_template_keys(self, template_text: str) -> List[str]:
@@ -378,14 +401,14 @@ class RefereeAgent:
                 comments.append(comment)
         return comments
 
-    def _format_aspect_prompt(self, comment: str, aspect_prompt: str) -> str:
+    def _format_aspect_prompt(self, text: str, aspect_prompt: str) -> str:
         return f"""
-        I will give you a text that corresponds to a comment. I want you to evaluate a specific aspect of this comment.
+        I will give you a text to evaluate. I want you to evaluate a specific aspect of this text.
 
         {aspect_prompt}
 
         Here is the text to evaluate:
-        {comment}
+        {text}
         """
 
     def _extract_character_name(self, comment: str) -> str:
@@ -396,50 +419,13 @@ class RefereeAgent:
 
     def _generate_topic_keywords(self, topic: str) -> str:
         """
-        Generate a set of keywords (up to 5 words) to represent the topic using the LLM.
+        Generate a set of keywords (1 to 5 words) to represent the topic using the LLM.
         """
-        prompt = f"""
-        I will give you a topic as a string. Your task is to summarize the topic into a concise set of meaningful keywords (up to 5 words) that capture its core concepts. The keywords should be significant terms (e.g., nouns, adjectives, or key concepts) and should not include filler or meaningless phrases like "it is not", "what should be", "how can we", or "the role of". Respond ONLY with the keywords as a space-separated string (e.g., "AI Sustainability Ethics"), no other text, and no commas.
-
-        Examples:
-        Topic: "It is not ethical to exploit resources without regulation"
-        Keywords: Ethics Resources Regulation
-
-        Topic: "Should nations prioritize universal basic income"
-        Keywords: Universal Basic Income
-
-        Topic: "How can we balance technological advancement with environmental protection"
-        Keywords: Technology Environment Balance
-
-        Topic: "The role of AI in shaping future education systems"
-        Keywords: AI Education Future
-
-        Topic: "What is the ethical responsibility of advanced AI systems toward addressing global wealth inequality, and should AI decision-making be regulated to prevent systemic biases?"
-        Keywords: AI Ethics Wealth Inequality Regulation
-
-        Here is the topic to summarize:
-        {topic}
-        """
-        try:
-            llm_response = self.llm.invoke(prompt)
-            keywords = str(llm_response.content).strip()
-            # Ensure the result is between 1 and 5 words
-            words = keywords.split()
-            if len(words) < 1 or len(words) > 5:
-                raise ValueError(
-                    "Topic keywords must be between 1 and 5 words"
-                )
-            return keywords
-        except Exception as e:
-            logger.error(
-                f"Error generating topic keywords with LLM: {str(e)}",
-                exc_info=True,
-            )
-            # Fallback: Take the first 5 words of the topic as a last resort
-            words = topic.split()[:5]
-            while len(words) < 1:  # Ensure at least 1 word
-                words.append("Topic")
-            return " ".join(words)
+        aspect_data = self.evaluation_aspects["topic_reduction"]
+        result = self._evaluate_aspect(topic, aspect_data)
+        topic_keywords = result["topic_keywords"]
+        logger.info(f"Generated topic keywords: {topic_keywords}")
+        return topic_keywords
 
     def _evaluate_aspect(
         self, comment: str, aspect_data: Dict
@@ -473,6 +459,75 @@ class RefereeAgent:
                     sentiment_analysis="Neutral", sentiment_score=0.0
                 )
                 return default_response.model_dump()
+
+        # Special handling for topic_reduction with a custom fallback
+        if aspect_data["response_model"] == TopicReductionResponse:
+            aspect_prompt = self._format_aspect_prompt(
+                comment, aspect_data["prompt"]
+            )
+            max_retries = 3
+            retry_count = 0
+
+            while retry_count < max_retries:
+                try:
+                    llm_response = self.llm.invoke(aspect_prompt)
+                    output = str(llm_response.content).strip()
+                    logger.info(f"\n=====\nTopic reduction output: {output}")
+
+                    # Strip markdown code block markers if present (e.g., ```json ... ```)
+                    if output.startswith("```json") and output.endswith("```"):
+                        output = output[len("```json") : -len("```")].strip()
+
+                    # Validate the response using the Pydantic model
+                    response_model = aspect_data[
+                        "response_model"
+                    ].model_validate_json(output)
+                    return response_model.model_dump()
+                except Exception as e:
+                    retry_count += 1
+                    logger.error(
+                        f"Error evaluating topic reduction (attempt {retry_count}/{max_retries}): {str(e)}",
+                        exc_info=True,
+                    )
+                    if retry_count >= max_retries:
+                        logger.warning(
+                            f"Failed after {max_retries} attempts. Using fallback for topic reduction."
+                        )
+                        # Fallback: Extract key terms manually
+                        words = comment.lower().split()
+                        stop_words = {
+                            "is",
+                            "the",
+                            "to",
+                            "what",
+                            "a",
+                            "for",
+                            "in",
+                            "of",
+                        }
+                        key_terms = [
+                            word for word in words if word not in stop_words
+                        ][:3]
+                        if not key_terms:  # Ensure at least one word
+                            key_terms = ["topic"]
+                        default_response = TopicReductionResponse(
+                            topic_keywords=" ".join(key_terms)
+                        )
+                        return default_response.model_dump()
+
+            # If max_retries is 0 or negative, return a fallback
+            logger.warning(
+                f"No retries attempted (max_retries={max_retries}). Using fallback for topic reduction."
+            )
+            words = comment.lower().split()
+            stop_words = {"is", "the", "to", "what", "a", "for", "in", "of"}
+            key_terms = [word for word in words if word not in stop_words][:3]
+            if not key_terms:
+                key_terms = ["topic"]
+            default_response = TopicReductionResponse(
+                topic_keywords=" ".join(key_terms)
+            )
+            return default_response.model_dump()
 
         # Existing LLM-based evaluation for other aspects
         aspect_prompt = self._format_aspect_prompt(
@@ -739,6 +794,8 @@ class RefereeAgent:
                     aspect_name,
                     aspect_data,
                 ) in self.evaluation_aspects.items():
+                    if aspect_name == "topic_reduction":
+                        continue  # Skip topic_reduction as it's already handled
                     logger.info(f"Evaluating {aspect_name} for comment {idx}")
                     aspect_result = self._evaluate_aspect(comment, aspect_data)
                     logger.info(

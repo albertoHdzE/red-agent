@@ -141,7 +141,7 @@ def run_single_topic(topic, topic_index, agents, config, logs_dir):
     )
 
 
-def run_referee_evaluation(logs_dir, testing_mode):
+def run_referee_evaluation(logs_dir, testing_mode, wide_mode, num_topics):
     referee = RefereeAgent()
     evaluation_csv_path = logs_dir / "evaluation.csv"
     print(
@@ -150,7 +150,7 @@ def run_referee_evaluation(logs_dir, testing_mode):
     logger.info("Starting referee evaluation on all transcripts.")
 
     # Determine which transcript files to evaluate based on the mode
-    if testing_mode:
+    if testing_mode or (wide_mode and num_topics == 1):
         transcript_files = [logs_dir / "transcript.txt"]
     else:
         transcript_files = sorted(
@@ -170,11 +170,11 @@ def run_referee_evaluation(logs_dir, testing_mode):
 
     for transcript_path in transcript_files:
         # Extract topic index based on filename
-        if testing_mode:
+        if testing_mode or (wide_mode and num_topics == 1):
             topic_index = 0
             topic = topics[topic_index]
             logger.info(
-                f"Evaluating transcript for testing mode: {transcript_path}"
+                f"Evaluating transcript for testing/wide mode (single topic): {transcript_path}"
             )
         else:
             topic_index = int(transcript_path.stem.split("_")[1]) - 1
@@ -228,23 +228,74 @@ def main():
         action="store_true",
         help="Run in test mode with a random topic",
     )
+    parser.add_argument(
+        "--wide",
+        action="store_true",
+        help="Run in wide mode with specified number of topics, minimum comments, and number of agents",
+    )
+    parser.add_argument(
+        "--topics",
+        type=int,
+        default=1,
+        help="Number of topics to debate in wide mode (default: 1)",
+    )
+    parser.add_argument(
+        "--min-comments",
+        type=int,
+        default=3,
+        help="Minimum number of comments per agent in wide mode (default: 3)",
+    )
+    parser.add_argument(
+        "--num-agents",
+        type=int,
+        default=5,
+        help="Number of agents to participate in wide mode (1 to 5, default: 5)",
+    )
     args = parser.parse_args()
+
+    # Validate num_agents
+    if args.wide:
+        if args.num_agents < 1 or args.num_agents > 5:
+            logger.error(
+                "Number of agents must be between 1 and 5 in wide mode."
+            )
+            print(
+                "[red]Error: Number of agents must be between 1 and 5 in wide mode.[/red]"
+            )
+            return
+        if args.topics < 1:
+            logger.error("Number of topics must be at least 1 in wide mode.")
+            print(
+                "[red]Error: Number of topics must be at least 1 in wide mode.[/red]"
+            )
+            return
+        if args.min_comments < 1:
+            logger.error(
+                "Minimum comments per agent must be at least 1 in wide mode."
+            )
+            print(
+                "[red]Error: Minimum comments per agent must be at least 1 in wide mode.[/red]"
+            )
+            return
 
     # Load configuration from agents.yaml where agents are defined
     config = load_config()
     logger.info(f"Loaded configuration with {len(config['agents'])} agents")
 
-    # Override testing_mode based on command-line argument
+    # Override testing_mode and wide_mode based on command-line arguments
     testing_mode = args.test
+    wide_mode = args.wide
     config["debate"]["testing_mode"] = testing_mode
-    logger.info(f"Running in {'testing' if testing_mode else 'real'} mode")
+    logger.info(
+        f"Running in {'testing' if testing_mode else 'wide' if wide_mode else 'real'} mode"
+    )
 
     # Initialize logs directory
     logs_dir = Path("logs")
     logs_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create agents from configuration
-    agents = []
+    # Create all agents from configuration
+    all_agents = []
     for agent_config in config["agents"]:
         agent = DebateAgent(
             name=agent_config["name"],
@@ -254,9 +305,29 @@ def main():
             min_turns=config["debate"]["min_turns_per_agent"],
             max_turns=config["debate"]["max_turns_per_agent"],
         )
-        agents.append(agent)
+        all_agents.append(agent)
 
-    logger.info(f"Created agents: {[agent.name for agent in agents]}")
+    logger.info(f"Created all agents: {[agent.name for agent in all_agents]}")
+
+    # Select agents for the debate
+    if wide_mode:
+        # Randomly select the specified number of agents
+        num_agents = args.num_agents
+        selected_agents = random.sample(all_agents, num_agents)
+        logger.info(
+            f"Selected {num_agents} agents for wide mode: {[agent.name for agent in selected_agents]}"
+        )
+
+        # Update the config with the new min_turns_per_agent
+        config["debate"]["min_turns_per_agent"] = args.min_comments
+        for agent in selected_agents:
+            agent.min_turns = args.min_comments
+    else:
+        # Use all agents for test or real mode
+        selected_agents = all_agents
+        logger.info(
+            f"Using all agents: {[agent.name for agent in selected_agents]}"
+        )
 
     if testing_mode:
         # Testing mode: Run a single random topic
@@ -265,10 +336,29 @@ def main():
         run_single_topic(
             topic,
             topic_index=None,
-            agents=agents,
+            agents=selected_agents,
             config=config,
             logs_dir=logs_dir,
         )
+    elif wide_mode:
+        # Wide mode: Run the specified number of topics
+        num_topics = min(
+            args.topics, len(topics)
+        )  # Don't exceed available topics
+        selected_topics = random.sample(topics, num_topics)
+        logger.info(
+            f"Wide mode: Selected {num_topics} topics: {selected_topics}"
+        )
+        for topic_idx, topic in enumerate(
+            selected_topics, 1
+        ):  # 1-based index for filenames
+            run_single_topic(
+                topic,
+                topic_index=None if num_topics == 1 else topic_idx,
+                agents=selected_agents,
+                config=config,
+                logs_dir=logs_dir,
+            )
     else:
         # Real mode: Run all topics
         logger.info("Real mode: Generating transcripts for all topics")
@@ -278,14 +368,19 @@ def main():
             run_single_topic(
                 topic,
                 topic_index=topic_idx,
-                agents=agents,
+                agents=selected_agents,
                 config=config,
                 logs_dir=logs_dir,
             )
 
     # After all transcripts are generated, run referee evaluation
     try:
-        run_referee_evaluation(logs_dir, testing_mode=testing_mode)
+        run_referee_evaluation(
+            logs_dir,
+            testing_mode=testing_mode,
+            wide_mode=wide_mode,
+            num_topics=num_topics if wide_mode else len(topics),
+        )
     except Exception as e:
         print(f"[red]Error during referee evaluation: {e}[/red]")
         logger.error(f"Error during referee evaluation: {e}", exc_info=True)
