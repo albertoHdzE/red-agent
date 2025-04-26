@@ -94,14 +94,20 @@ def run_single_topic(topic, topic_index, agents, config, logs_dir):
             prev_conversation = state["conversation"]
             state = graph.invoke(state)
 
-            # Print agent outputs
+            # Print agent outputs with red agent highlighting
             logger.info("PRINTING COMMENTS FROM AGENTS")
             new_lines = (
                 state["conversation"].replace(prev_conversation, "").strip()
             )
             for line in new_lines.split("\n"):
                 if line.strip():
-                    print(f"[white]{line.strip()}[/white]")
+                    agent_name = line.split(":")[0]
+                    color = (
+                        "red"
+                        if agent_name in ["Nemesis", "Chaos"]
+                        else "white"
+                    )
+                    print(f"[{color}]{line.strip()}[/{color}]")
 
         except Exception as e:
             logger.error(
@@ -165,19 +171,13 @@ def run_referee_evaluation(logs_dir, testing_mode):
     for transcript_path in transcript_files:
         # Extract topic index based on filename
         if testing_mode:
-            # In testing mode, topic is randomly chosen, but we don't have the index
-            # We can use a placeholder topic index (e.g., 0) since it's just one topic
             topic_index = 0
-            topic = topics[
-                topic_index
-            ]  # We'll use the first topic as a placeholder
+            topic = topics[topic_index]
             logger.info(
                 f"Evaluating transcript for testing mode: {transcript_path}"
             )
         else:
-            topic_index = (
-                int(transcript_path.stem.split("_")[1]) - 1
-            )  # Convert to 0-based index
+            topic_index = int(transcript_path.stem.split("_")[1]) - 1
             topic = topics[topic_index]
             logger.info(
                 f"Evaluating transcript for topic {topic_index + 1}: {topic}"
