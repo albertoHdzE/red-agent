@@ -9,6 +9,16 @@ __pycache__/
 # other
 .DS_Store
 
+# LaTeX compilation files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+
+
 # Distribution / packaging
 .Python
 build/
