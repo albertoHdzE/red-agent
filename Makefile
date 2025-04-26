@@ -20,8 +20,9 @@
 #   - fix-hooks: Fixes specific pre-commit hook issues (e.g., B023 in langgraph_arena.py).
 #   - commit: Stages, formats, runs pre-commit checks, and commits changes.
 #   - commit-force: Same as commit but bypasses pre-commit hooks.
+#   - download-ollama-models: Downloads all required Ollama models for the project.
 
-.PHONY: format lint test check run evaluate clean precommit fix-hooks commit-force
+.PHONY: format lint test check run evaluate clean precommit fix-hooks commit commit-force download-ollama-models
 
 format:
 	@echo "🧹 Formatting code with black..."
@@ -125,3 +126,31 @@ commit-force:
 	@echo "🌿 Committing on branch: $$(git rev-parse --abbrev-ref HEAD)"
 	@echo "📝 Committing changes (bypassing hooks)..."
 	git commit -m "$(message)" --no-verify
+
+download-ollama-models:
+	@echo "📥 Downloading required Ollama models..."
+	@for model in \
+		"llama3.3-70b" \
+		"qwen2.5-72b" \
+		"deepseek-r1-671b" \
+		"phi4-14b" \
+		"mistral-small3.1-24b" \
+		"codestral-22b" \
+		"starcoder2-15b" \
+		"dolphin-llama3-70b" \
+		"hermes3-405b" \
+		"wizardlm2-8x22b" \
+		"aya-35b" \
+		"mistral-large-123b" \
+		"tinyllama-1.1b" \
+		"deepseek-coder-v2"; do \
+		echo "Downloading $$model..."; \
+		ollama pull $$model; \
+		if [ $$? -eq 0 ]; then \
+			echo "Successfully downloaded $$model"; \
+		else \
+			echo "Failed to download $$model. Please check your Ollama setup and network connection."; \
+			exit 1; \
+		fi; \
+	done
+	@echo "✅ All models downloaded successfully!"
