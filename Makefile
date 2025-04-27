@@ -130,20 +130,20 @@ commit-force:
 download-ollama-models:
 	@echo "📥 Downloading required Ollama models..."
 	@for model in \
-		"llama3.3-70b" \
-		"qwen2.5-72b" \
-		"deepseek-r1-671b" \
-		"phi4-14b" \
-		"mistral-small3.1-24b" \
-		"codestral-22b" \
-		"starcoder2-15b" \
-		"dolphin-llama3-70b" \
-		"hermes3-405b" \
-		"wizardlm2-8x22b" \
-		"aya-35b" \
-		"mistral-large-123b" \
-		"tinyllama-1.1b" \
-		"deepseek-coder-v2"; do \
+		"llama2" \
+		"qwen:7b" \
+		"deepseek-coder" \
+		"phi" \
+		"mistral" \
+		"codellama" \
+		"starcoder2" \
+		"dolphin-phi" \
+		"neural-chat" \
+		"wizard-math" \
+		"openchat" \
+		"mistral-openorca" \
+		"tinyllama" \
+		"deepseek-coder"; do \
 		echo "Downloading $$model..."; \
 		ollama pull $$model; \
 		if [ $$? -eq 0 ]; then \
