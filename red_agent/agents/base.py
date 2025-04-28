@@ -9,7 +9,6 @@ logger = logging.getLogger("red_agent.agents")
 
 class DebateAgent:
     memory: list[str]
-    llm: ChatOllama  # <-- Add this line
 
     def __init__(
         self,
@@ -19,19 +18,22 @@ class DebateAgent:
         description: str,
         min_turns: int,
         max_turns: int,
+        active_agent_names: list[str] | None = None,
     ):
         self.name: str = name
         self.role: str = role
         self.description: str = description
-        self.memory = []  # <-- No type annotation here
+        self.memory = []
         self.finished: bool = False
         self.model_name: str = model
         self.turn_count: int = 0
         self.min_turns: int = min_turns
         self.max_turns: int = max_turns
+        self.active_agent_names = active_agent_names or []
+        self._llm = None  # Don't initialize the LLM here
 
         logger.info(
-            f"Initializing agent {name} with role {role} using model {model}"
+            f"Initializing agent {name} with role {role} using model {model}, active agents: {self.active_agent_names}"
         )
 
         prompt_path = (
@@ -39,8 +41,31 @@ class DebateAgent:
         )
         self.template: Template = Template(prompt_path.read_text())
 
-        self.llm = ChatOllama(model=self.model_name)
-        logger.info(f"Agent {name} initialized successfully")
+        logger.info(
+            f"Agent {name} initialized successfully (model will be loaded on demand)"
+        )
+
+    @property
+    def llm(self):
+        """Lazy-load the LLM model only when needed"""
+        if self._llm is None:
+            logger.info(
+                f"Loading model {self.model_name} for agent {self.name}"
+            )
+            self._llm = ChatOllama(model=self.model_name)
+        return self._llm
+
+    def release_model(self):
+        """Release the model to free memory"""
+        if self._llm is not None:
+            logger.info(
+                f"Releasing model {self.model_name} for agent {self.name}"
+            )
+            self._llm = None
+            # Force garbage collection to ensure memory is freed
+            import gc
+
+            gc.collect()
 
     def build_prompt(self, topic: str, conversation: str) -> str:
         prompt = self.template.render(
@@ -66,15 +91,11 @@ class DebateAgent:
             self._log_first50_characters(response)
             return response
 
-        # conversation is the updated conversation with the last comment
         full_conversation = conversation
-
-        # Log the conversation length for debugging
         logger.debug(
             f"Conversation length for {self.name}: {len(full_conversation)} characters"
         )
 
-        # the prompt should contain the entire conversation up to this point
         prompt = self.build_prompt(topic, full_conversation)
 
         try:
@@ -94,11 +115,10 @@ class DebateAgent:
                 response = f"{self.name}: {response}"
 
             # Check if response contains another agent's name as a speaker
-            for other_agent_prefix in [
-                f"{name}:"
-                for name in ["Athena", "Prometheus", "Socrates", "Plato"]
-                if name != self.name
+            for other_agent_name in [
+                name for name in self.active_agent_names if name != self.name
             ]:
+                other_agent_prefix = f"{other_agent_name}:"
                 if other_agent_prefix in response:
                     logger.warning(
                         f"Response from {self.name} contains another agent's prefix: {other_agent_prefix}, removing it"
@@ -107,7 +127,7 @@ class DebateAgent:
 
             # Enforce word count limit (approximately 100 words)
             words = response.split()
-            if len(words) > 105:  # Allow a small buffer
+            if len(words) > 105:
                 logger.warning(
                     f"Response from {self.name} exceeds word limit ({len(words)} words), truncating"
                 )
@@ -122,9 +142,11 @@ class DebateAgent:
             response = f"{self.name}: Nothing to add  # LLM error: {str(e)}"
             self.finished = True
             self._log_first50_characters(response)
+            # Make sure to release the model even if there's an error
+            self.release_model()
             return response
 
-        # Logic for early stopping - force more engagement
+        # Logic for early stopping
         if "Nothing to add" in response:
             if self.turn_count < self.min_turns:
                 logger.info(
@@ -152,10 +174,7 @@ class DebateAgent:
         return response
 
     def _log_first50_characters(self, response: str) -> None:
-        """Log the agent's response to a common transcript file."""
         try:
-            # Just log that we would write to transcript, but don't actually write
-            # since we're doing it directly in run_arena.py
             logger.debug(f"Logging to transcript: {response[:50]}...")
         except Exception as e:
             logger.error(f"Error logging transcript: {str(e)}")

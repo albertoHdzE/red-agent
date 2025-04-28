@@ -12,15 +12,13 @@
 #       - mode=wide: Runs specified number of topics with randomly selected agents.
 #         Example: make run mode=wide topics=3 min-comments=3 num-agents=3
 #       - mode=wide-2: Runs 2 topics with 2 randomly selected agents, each making at least 2 comments.
-#         Example: make run mode=wide-2
 #       - mode=wide-3: Runs 3 topics with 3 randomly selected agents, each making at least 3 comments.
-#         Example: make run mode=wide-3
 #   - evaluate: Aggregates and evaluates debate results.
 #   - clean: Removes log files (transcripts, evaluation CSV, debug logs).
-#   - fix-hooks: Fixes specific pre-commit hook issues (e.g., B023 in langgraph_arena.py).
+#   - fix-hooks: Fixes specific pre-commit hook issues.
 #   - commit: Stages, formats, runs pre-commit checks, and commits changes.
 #   - commit-force: Same as commit but bypasses pre-commit hooks.
-#   - download-ollama-models: Downloads all required Ollama models for the project.
+#   - download-ollama-models: Downloads all required Ollama models.
 
 .PHONY: format lint test check run evaluate clean precommit fix-hooks commit commit-force download-ollama-models
 
@@ -50,7 +48,6 @@ test:
 
 check: format lint
 
-# Add a precommit command to run all pre-commit checks
 precommit:
 	@echo "🔍 Running pre-commit checks..."
 	poetry run pre-commit run --all-files
@@ -58,7 +55,7 @@ precommit:
 
 run:
 ifeq ($(mode),test)
-	@echo "🧪 Running in test mode with random topic..."
+	@echo "🧪 Running in test mode with random topic and all agents..."
 	poetry run python red_agent/arena/run_arena.py --test
 else ifeq ($(mode),wide)
 	@echo "🌐 Running in wide mode with specified parameters..."
@@ -79,7 +76,7 @@ else ifeq ($(mode),wide-3)
 		--min-comments=$(or $(min-comments),3) \
 		--num-agents=$(or $(num-agents),3)
 else
-	@echo "🚀 Running in full mode with all topics..."
+	@echo "🚀 Running in full mode with all topics and all agents..."
 	poetry run python red_agent/arena/run_arena.py
 endif
 
@@ -92,7 +89,6 @@ clean:
 	rm -f logs/evaluation.csv
 	rm -f logs/debug.log
 
-# Fix the specific flake8 issue in langgraph_arena.py
 fix-hooks:
 	@echo "🔧 Fixing pre-commit hook issues..."
 	@echo "🔧 Fixing B023 error in langgraph_arena.py..."
@@ -100,7 +96,6 @@ fix-hooks:
 	@sed -i '' 's/global_referee/global_referee_instance/g' red_agent/arena/langgraph_arena.py
 	@echo "✅ Fixed hook issues!"
 
-# Add a commit command that stages all changes, formats, and commits
 commit:
 	@echo "🔄 Staging all changes..."
 	git add .

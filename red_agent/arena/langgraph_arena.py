@@ -121,6 +121,11 @@ def build_debate_graph(agents: List[DebateAgent]) -> StateGraph:
                 )
                 return state
 
+                # Make sure the model is released after use
+                agent_instance.release_model()
+
+                return state
+
             return node_fn
 
         state_graph.add_node(agent.name, make_node(agent))
